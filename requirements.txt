@@ -1,0 +1,7 @@
+playwright
+streamlit
+mcp<2
+pytest
+google-api-python-client
+google-auth-httplib2
+google-auth-oauthlib

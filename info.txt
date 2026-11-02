@@ -1,0 +1,20 @@
+Project ko start karne ke liye, in steps ko follow karein:
+
+1. Directory mein jayein: Terminal (ya Command Prompt) open karein aur bauto folder mein jayein:
+
+cd bauto
+2. Dependencies install karein:
+
+pip install -r requirements.txt
+playwright install chromium
+3. Google Sheets (MCP Server) Setup: Google Sheets mein data save karne ke liye aapko Google Cloud Console se credentials.json file download karni hogi:
+
+Google Cloud Console par jayein aur ek naya project banayein.
+Google Sheets API ko enable karein.
+"Credentials" section mein ja kar "OAuth client ID" create karein (Application type "Desktop app" select karein).
+JSON file download karein, uska naam credentials.json rakhein aur usko bauto folder mein rakh dein.
+(Agar credentials.json file nahi hogi, toh MCP server "Mock mode" mein chale ga aur data ko sirf simulate karega bina app ko crash kiye).
+4. Project run karein: Streamlit application ko start karne ke liye ye command run karein:
+
+streamlit run app.py
+Ye command ek local web server start kar degi aur aapke default browser mein BAuto ki professional UI open ho jayegi. Wahan se aap apna browser profile select karke automation start kar sakte hain!
