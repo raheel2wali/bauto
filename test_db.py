@@ -32,3 +32,18 @@ def test_insert_and_get_emails(test_db):
     assert email[2] == "test@example.com"
     assert email[3] == "Test Subject"
     assert email[4] == "Test Snippet"
+
+def test_profile_tasks(test_db):
+    # Default task
+    default_task = db.get_profile_task("Default")
+    assert default_task == "https://mail.google.com/mail/u/0/#inbox"
+
+    # Set and get task
+    db.set_profile_task("Default", "https://example.com")
+    updated_task = db.get_profile_task("Default")
+    assert updated_task == "https://example.com"
+
+    # Update task (UPSERT test)
+    db.set_profile_task("Default", "https://test.com")
+    updated_task = db.get_profile_task("Default")
+    assert updated_task == "https://test.com"

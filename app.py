@@ -1,8 +1,8 @@
 import streamlit as st
 import pandas as pd
 from profiles import get_chrome_profiles
-from automation import fetch_latest_email
-from db import init_db, insert_email, get_all_emails
+from automation import run_automation
+from db import init_db, insert_email, get_all_emails, set_profile_task, get_profile_task
 from mcp_client import append_to_google_sheet
 
 # Initialize Database on startup
@@ -34,40 +34,61 @@ with col1:
         format_func=lambda x: profile_options[x]
     )
 
+    current_task = get_profile_task(selected_profile_name)
+
+    task_url = st.text_input(
+        "Task Website URL",
+        value=current_task,
+        help="URL to open (e.g. https://mail.google.com/mail/u/0/#inbox or any custom website)"
+    )
+
+    if st.button("💾 Save Task"):
+        set_profile_task(selected_profile_name, task_url)
+        st.success(f"Task updated for profile: {profile_options[selected_profile_name]}")
+
     st.markdown("---")
     st.subheader("Run Automation")
-    st.markdown("Click below to launch the browser and extract the latest email.")
+    st.markdown("Click below to launch the browser and execute the task.")
     
     if st.button("🚀 Start Automation", type="primary"):
         st.info("Automation started. Please wait...")
         
-        with st.spinner("Launching browser & fetching email..."):
-            email_data = fetch_latest_email(base_dir, selected_profile_name)
+        # Load the saved task URL to ensure we run what's in the DB
+        run_url = get_profile_task(selected_profile_name)
+
+        with st.spinner(f"Launching browser to open: {run_url}..."):
+            result = run_automation(base_dir, selected_profile_name, run_url)
         
-        if email_data:
-            st.success("Email fetched successfully!")
-            
-            # 1. Log to DB
-            insert_email(
-                selected_profile_name,
-                email_data['sender'],
-                email_data['subject'],
-                email_data['snippet']
-            )
-            
-            # 2. Sync via MCP
-            with st.spinner("Syncing to Google Sheets via MCP..."):
-                mcp_res = append_to_google_sheet(
-                    email_data['sender'],
-                    email_data['subject'],
-                    email_data['snippet']
+        if result['status'] == 'success':
+            if result['type'] == 'gmail':
+                st.success("Email fetched successfully!")
+
+                # 1. Log to DB
+                insert_email(
+                    selected_profile_name,
+                    result['sender'],
+                    result['subject'],
+                    result['snippet']
                 )
-            st.success(f"MCP Sync: {mcp_res}")
-            
-            # Rerun to update history
-            st.rerun()
+
+                # 2. Sync via MCP
+                with st.spinner("Syncing to Google Sheets via MCP..."):
+                    mcp_res = append_to_google_sheet(
+                        result['sender'],
+                        result['subject'],
+                        result['snippet']
+                    )
+                st.success(f"MCP Sync: {mcp_res}")
+
+                # Rerun to update history
+                st.rerun()
+            else:
+                st.success(f"Successfully opened {result['url']}")
+        elif result['status'] == 'not_logged_in':
+             st.warning("Gmail is not logged in. Opened Gmail login page instead.")
         else:
-            st.error("Failed to fetch email. Please check the logs.")
+            err_msg = result.get('message', 'Unknown error')
+            st.error(f"Automation failed: {err_msg}. Please check the logs.")
 
 with col2:
     st.header("Automation History")
