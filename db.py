@@ -20,35 +20,8 @@ def init_db():
             timestamp DATETIME
         )
     ''')
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS profile_tasks (
-            profile_dir TEXT PRIMARY KEY,
-            task_url TEXT
-        )
-    ''')
     conn.commit()
     conn.close()
-
-def set_profile_task(profile_dir, task_url):
-    conn = get_connection()
-    cursor = conn.cursor()
-    cursor.execute('''
-        INSERT INTO profile_tasks (profile_dir, task_url)
-        VALUES (?, ?)
-        ON CONFLICT(profile_dir) DO UPDATE SET task_url=excluded.task_url
-    ''', (profile_dir, task_url))
-    conn.commit()
-    conn.close()
-
-def get_profile_task(profile_dir):
-    conn = get_connection()
-    cursor = conn.cursor()
-    cursor.execute('SELECT task_url FROM profile_tasks WHERE profile_dir = ?', (profile_dir,))
-    row = cursor.fetchone()
-    conn.close()
-    if row:
-        return row[0]
-    return "https://mail.google.com/mail/u/0/#inbox"
 
 def insert_email(profile_dir, sender, subject, snippet):
     conn = get_connection()

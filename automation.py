@@ -2,68 +2,41 @@ from playwright.sync_api import sync_playwright
 import os
 import time
 
-def run_automation(user_data_dir, profile_dir, task_url):
+def fetch_latest_email(user_data_dir, profile_dir):
     """
     Launches Chrome using a persistent context to utilize the existing logged-in session,
-    navigates to the task_url.
-    If task_url is Gmail, it attempts to fetch the latest email's details if logged in.
-    Otherwise, it simply opens the website.
+    navigates to Gmail, and fetches the latest email's details.
     
-    Returns a dict with 'type', 'status', and other data if applicable.
+    Returns a dict with 'sender', 'subject', 'snippet' or None if it fails.
     """
     try:
         with sync_playwright() as p:
+            # We use launch_persistent_context to use the actual Chrome user data directory.
+            # However, Playwright can sometimes struggle to launch Chrome if it's already running.
+            # Using channel='chrome' attempts to use the system Chrome.
+            
+            # Since playwright doesn't support profile_dir natively as an argument to launch_persistent_context
+            # unless we start from scratch or manipulate args, we specify the base dir and pass an arg.
             args = []
             if profile_dir and profile_dir != 'Default':
                  args.append(f'--profile-directory={profile_dir}')
                  
             browser = p.chromium.launch_persistent_context(
                 user_data_dir=user_data_dir,
-                channel="chrome",
+                channel="chrome", # try to use installed chrome
                 headless=False,
                 args=args,
-                no_viewport=True,
+                no_viewport=True, # to avoid resizing issues
             )
             
             page = browser.new_page()
             
-            # If not a specific gmail inbox url, just go there and we are done
-            if "mail.google.com" not in task_url:
-                page.goto(task_url)
-                # Keep it open for a bit or just return success
-                time.sleep(2)
-                return {
-                    "type": "custom",
-                    "status": "success",
-                    "url": task_url
-                }
-
             # Go to Gmail
-            page.goto("https://mail.google.com/")
-            time.sleep(3) # Wait for potential redirect if not logged in
-
-            if "accounts.google.com" in page.url or "v2/identifier" in page.url:
-                # Not logged in
-                return {
-                    "type": "gmail",
-                    "status": "not_logged_in"
-                }
+            page.goto("https://mail.google.com/mail/u/0/#inbox")
             
+            # Wait for the inbox to load. 
             # We can wait for the table row that contains emails.
-            try:
-                page.wait_for_selector("table.F.cf.zt tbody tr", timeout=15000)
-            except Exception:
-                # Check again if redirected to login
-                if "accounts.google.com" in page.url:
-                    return {
-                        "type": "gmail",
-                        "status": "not_logged_in"
-                    }
-                return {
-                    "type": "gmail",
-                    "status": "error",
-                    "message": "Inbox not found"
-                }
+            page.wait_for_selector("table.F.cf.zt tbody tr", timeout=30000)
             
             # We add a small sleep to ensure dynamic elements have settled.
             time.sleep(2)
@@ -86,27 +59,17 @@ def run_automation(user_data_dir, profile_dir, task_url):
                 
                 browser.close()
                 return {
-                    "type": "gmail",
-                    "status": "success",
                     "sender": sender,
                     "subject": subject,
                     "snippet": snippet
                 }
             else:
                 browser.close()
-                return {
-                    "type": "gmail",
-                    "status": "error",
-                    "message": "No emails found"
-                }
+                return None
                 
     except Exception as e:
         print(f"Error during automation: {e}")
-        return {
-            "type": "error",
-            "status": "error",
-            "message": str(e)
-        }
+        return None
 
 if __name__ == '__main__':
     # Simple test placeholder
