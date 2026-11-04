@@ -36,14 +36,34 @@ def test_insert_and_get_emails(test_db):
 def test_profile_tasks(test_db):
     # Default task
     default_task = db.get_profile_task("Default")
-    assert default_task == "https://mail.google.com/mail/u/0/#inbox"
+    assert default_task["url"] == "https://mail.google.com/mail/u/0/#inbox"
+    assert default_task["timer"] == 0
 
     # Set and get task
-    db.set_profile_task("Default", "https://example.com")
+    db.set_profile_task("Default", "https://example.com", 15)
     updated_task = db.get_profile_task("Default")
-    assert updated_task == "https://example.com"
+    assert updated_task["url"] == "https://example.com"
+    assert updated_task["timer"] == 15
 
     # Update task (UPSERT test)
-    db.set_profile_task("Default", "https://test.com")
+    db.set_profile_task("Default", "https://test.com", 30)
     updated_task = db.get_profile_task("Default")
-    assert updated_task == "https://test.com"
+    assert updated_task["url"] == "https://test.com"
+    assert updated_task["timer"] == 30
+
+def test_due_tasks(test_db):
+    # Setup some tasks
+    db.set_profile_task("Default", "https://example.com", 15)
+    db.set_profile_task("Profile 1", "https://test.com", 0) # No timer
+
+    due = db.get_due_tasks()
+    # Default should be due immediately since last_run is null
+    assert len(due) == 1
+    assert due[0][0] == "Default"
+    assert due[0][1] == "https://example.com"
+
+    # Update last run
+    db.update_last_run("Default")
+    due_after_update = db.get_due_tasks()
+    # Shouldn't be due immediately after update
+    assert len(due_after_update) == 0

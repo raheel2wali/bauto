@@ -25,11 +25,17 @@ def run_automation(user_data_dir, profile_dir, task_url):
                 no_viewport=True,
             )
             
-            page = browser.new_page()
+            # Use the existing page to prevent an about:blank tab from hiding our work
+            page = browser.pages[0] if browser.pages else browser.new_page()
             
+            # Format url correctly
+            if not task_url.startswith('http://') and not task_url.startswith('https://'):
+                task_url = 'https://' + task_url
+
             # If not a specific gmail inbox url, just go there and we are done
             if "mail.google.com" not in task_url:
                 page.goto(task_url)
+                page.wait_for_load_state('domcontentloaded')
                 # Keep it open for a bit or just return success
                 time.sleep(2)
                 return {
@@ -40,7 +46,8 @@ def run_automation(user_data_dir, profile_dir, task_url):
 
             # Go to Gmail
             page.goto("https://mail.google.com/")
-            time.sleep(3) # Wait for potential redirect if not logged in
+            page.wait_for_load_state('domcontentloaded')
+            time.sleep(2) # Wait for potential redirect if not logged in
 
             if "accounts.google.com" in page.url or "v2/identifier" in page.url:
                 # Not logged in
