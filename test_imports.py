@@ -8,7 +8,7 @@ import app
 
 def test_imports():
     assert profiles.get_chrome_profiles is not None
-    assert automation.fetch_latest_email is not None
+    assert automation.run_automation is not None
     assert db.init_db is not None
     assert mcp_server.append_to_sheet is not None
     assert mcp_client.append_to_google_sheet is not None
